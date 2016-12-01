@@ -14,14 +14,15 @@
 package main
 
 import (
-	"net/http"
-
+	"encoding/json"
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/mendersoftware/go-lib-micro/log"
 	"github.com/mendersoftware/go-lib-micro/requestlog"
 	"github.com/mendersoftware/go-lib-micro/rest_utils"
 	"github.com/mendersoftware/go-lib-micro/routing"
 	"github.com/pkg/errors"
+	"io/ioutil"
+	"net/http"
 )
 
 const (
@@ -111,5 +112,52 @@ func (u *UserAdmApiHandlers) AuthVerifyHandler(w rest.ResponseWriter, r *rest.Re
 }
 
 func (u *UserAdmApiHandlers) PostUsersInitialHandler(w rest.ResponseWriter, r *rest.Request) {
-	rest.NotFound(w, r)
+	l := requestlog.GetRequestLogger(r.Env)
+
+	// get and validate user from body
+	var user UserModel
+	body, err := readBodyRaw(r)
+	if err != nil {
+		err = errors.Wrap(err, "failed to decode user info")
+		rest_utils.RestErrWithLogInternal(w, r, l, err)
+		return
+	}
+
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		err = errors.Wrap(err, "failed to decode user info")
+		rest_utils.RestErrWithLog(w, r, l, err, http.StatusBadRequest)
+		return
+	}
+
+	if err := user.ValidateNew(); err != nil {
+		err = errors.Wrap(err, "invalid user info")
+		rest_utils.RestErrWithLog(w, r, l, err, http.StatusBadRequest)
+		return
+	}
+
+	useradm, err := u.createUserAdm(l)
+	if err != nil {
+		rest_utils.RestErrWithLogInternal(w, r, l, err)
+		return
+	}
+
+	err = useradm.CreateUserInitial(&user)
+	if err != nil {
+		rest_utils.RestErrWithLogInternal(w, r, l, err)
+		return
+	}
+
+	//TODO build URL
+	w.Header().Set("Location", "TODO")
+}
+
+func readBodyRaw(r *rest.Request) ([]byte, error) {
+	content, err := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return content, nil
 }
