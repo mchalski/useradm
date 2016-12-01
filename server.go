@@ -25,9 +25,9 @@ import (
 	"net/http"
 )
 
-func SetupAPI(stacktype string) (*rest.Api, error) {
+func SetupAPI(stacktype string, privkey *rsa.PrivateKey) (*rest.Api, error) {
 	api := rest.NewApi()
-	if err := SetupMiddleware(api, stacktype); err != nil {
+	if err := SetupMiddleware(api, stacktype, privkey); err != nil {
 		return nil, errors.Wrap(err, "failed to setup middleware")
 	}
 
@@ -65,7 +65,7 @@ func RunServer(c config.Reader) error {
 			return ua, nil
 		})
 
-	api, err := SetupAPI(c.GetString(SettingMiddleware))
+	api, err := SetupAPI(c.GetString(SettingMiddleware), privKey)
 	if err != nil {
 		return errors.Wrap(err, "API setup failed")
 	}

@@ -17,11 +17,13 @@ import (
 	"fmt"
 	"net/http"
 
+	"crypto/rsa"
 	"github.com/ant0ine/go-json-rest/rest"
 	"github.com/mendersoftware/go-lib-micro/accesslog"
 	dlog "github.com/mendersoftware/go-lib-micro/log"
 	"github.com/mendersoftware/go-lib-micro/requestid"
 	"github.com/mendersoftware/go-lib-micro/requestlog"
+	"github.com/mendersoftware/useradm/authz"
 )
 
 const (
@@ -80,7 +82,7 @@ var (
 	}
 )
 
-func SetupMiddleware(api *rest.Api, mwtype string) error {
+func SetupMiddleware(api *rest.Api, mwtype string, privkey *rsa.PrivateKey) error {
 
 	l := dlog.New(dlog.Ctx{})
 
@@ -134,6 +136,10 @@ func SetupMiddleware(api *rest.Api, mwtype string) error {
 			"Location",
 			"Link",
 		},
+	})
+
+	api.Use(&authz.AuthzMiddleware{
+		NewSimpleAuthz(privkey, nil),
 	})
 
 	return nil
