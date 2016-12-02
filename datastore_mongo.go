@@ -85,6 +85,22 @@ func (db *DataStoreMongo) IsEmpty() (bool, error) {
 	return false, err
 }
 
+func (db *DataStoreMongo) CreateUser(u *UserModel) error {
+	s := db.session.Copy()
+	defer s.Close()
+
+	err := s.DB(DbName).C(DbUsersColl).Insert(u)
+	if err != nil {
+		if mgo.IsDup(err) {
+			return ErrDuplicateEmail
+		}
+
+		return errors.Wrap(err, "failed to insert user")
+	}
+
+	return nil
+}
+
 func (db *DataStoreMongo) UseLog(l *log.Logger) {
 	db.log = l.F(log.Ctx{})
 }
