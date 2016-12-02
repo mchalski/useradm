@@ -21,12 +21,15 @@ import (
 )
 
 var (
-	ErrUnauthorized = errors.New("unauthorized")
+	ErrUnauthorized   = errors.New("unauthorized")
+	ErrUserNotInitial = errors.New("user databse not empty")
 )
 
 type UserAdmApp interface {
 	// Login accepts email/password, returns JWT
 	Login(email, pass string) (*Token, error)
+	CreateUser(u *UserModel) error
+	CreateUserInitial(u *UserModel) error
 
 	SignToken() SignFunc
 }
@@ -85,5 +88,24 @@ func (u *UserAdm) generateInitialToken() *Token {
 func (u *UserAdm) SignToken() SignFunc {
 	return func(t *Token) (string, error) {
 		return u.jwtHandler.ToJWT(t)
+	}
+}
+
+func (ua *UserAdm) CreateUser(u *UserModel) error {
+	u.ID = uuid.NewV4().String()
+
+	return ua.db.CreateUser(u)
+}
+
+func (ua *UserAdm) CreateUserInitial(u *UserModel) error {
+	empty, err := ua.db.IsEmpty()
+	if err != nil {
+		return errors.Wrap(err, "failed to check if db is empty")
+	}
+
+	if empty {
+		return ua.CreateUser(u)
+	} else {
+		return ErrUserNotInitial
 	}
 }
