@@ -26,9 +26,7 @@ var (
 
 type UserAdmApp interface {
 	// Login accepts email/password, returns JWT
-	Login(email, pass string) (*Token, error)
-
-	SignToken() SignFunc
+	Login(email, pass string) (string, error)
 }
 
 type UserAdmConfig struct {
@@ -51,23 +49,23 @@ func NewUserAdm(jwtHandler JWTHandler, db DataStore, config UserAdmConfig) *User
 }
 
 // this is a dummy method for now - always returns a valid JWT; no db interaction
-func (u *UserAdm) Login(email, pass string) (*Token, error) {
+func (u *UserAdm) Login(email, pass string) (string, error) {
 
 	if email == "" && pass == "" {
 		empty, err := u.db.IsEmpty()
 		if err != nil {
-			return nil, errors.Wrap(err, "useradm: failed to query database")
+			return "", errors.Wrap(err, "useradm: failed to query database")
 		}
 		if !empty {
-			return nil, ErrUnauthorized
+			return "", ErrUnauthorized
 		}
 		// initial login
 		t := u.generateInitialToken()
 
-		return t, nil
+		return u.jwtHandler.ToJWT(t)
 	}
 
-	return nil, nil
+	return "", nil
 }
 
 func (u *UserAdm) generateInitialToken() *Token {
@@ -79,11 +77,5 @@ func (u *UserAdm) generateInitialToken() *Token {
 			Subject:   "initial",
 			Scope:     ScopeInitialUserCreate,
 		},
-	}
-}
-
-func (u *UserAdm) SignToken() SignFunc {
-	return func(t *Token) (string, error) {
-		return u.jwtHandler.ToJWT(t)
 	}
 }

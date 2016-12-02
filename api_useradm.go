@@ -85,7 +85,7 @@ func (u *UserAdmApiHandlers) AuthLoginHandler(w rest.ResponseWriter, r *rest.Req
 	}
 
 	// e.g. "useradm: unauthorized"; for now, every error is an internal one
-	token, err := useradm.Login(email, pass)
+	raw, err := useradm.Login(email, pass)
 	if err != nil {
 		switch {
 		case err == ErrUnauthorized:
@@ -96,13 +96,7 @@ func (u *UserAdmApiHandlers) AuthLoginHandler(w rest.ResponseWriter, r *rest.Req
 		return
 	}
 
-	raw, err := token.MarshalJWT(useradm.SignToken())
-	if err != nil {
-		rest_utils.RestErrWithLogInternal(w, r, l, err)
-		return
-	}
-
-	w.(http.ResponseWriter).Write(raw)
+	w.(http.ResponseWriter).Write([]byte(raw))
 	w.Header().Set("Content-Type", "application/jwt")
 }
 

@@ -13,31 +13,8 @@
 //    limitations under the License.
 package main
 
-import (
-	"github.com/pkg/errors"
-)
-
-// SignFunc will sign and encode token.
-type SignFunc func(token *Token) (string, error)
-
 type Token struct {
 	Claims Claims
-}
-
-func (t *Token) MarshalJWT(sign SignFunc) ([]byte, error) {
-	if sign == nil {
-		panic("no signature helper")
-	}
-
-	signed, err := sign(t)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to sign token")
-	}
-	return []byte(signed), nil
-}
-
-func (t *Token) UnmarshalJWT([]byte) error {
-	return nil
 }
 
 func (t *Token) IsInitial() bool {
