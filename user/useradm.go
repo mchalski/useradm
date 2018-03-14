@@ -128,13 +128,13 @@ func (u *UserAdm) Login(ctx context.Context, email, pass string) (*jwt.Token, er
 	}
 
 	//generate token
-	t := u.generateToken(user.ID, scope.All, ident.Tenant)
+	t, err := u.generateToken(user.ID, scope.All, ident.Tenant)
 
-	return t, nil
+	return t, err
 }
 
-func (u *UserAdm) generateToken(subject, scope, tenant string) *jwt.Token {
-	return &jwt.Token{
+func (u *UserAdm) generateToken(subject, scope, tenant string) (*jwt.Token, error) {
+	token := &jwt.Token{
 		Claims: jwt.Claims{
 			ID:        uuid.NewV4().String(),
 			Issuer:    u.config.Issuer,
@@ -145,6 +145,11 @@ func (u *UserAdm) generateToken(subject, scope, tenant string) *jwt.Token {
 			User:      true,
 		},
 	}
+
+	signed, err := u.jwtHandler.ToJWT(token)
+
+	token.Signed = signed
+	return token, err
 }
 
 func (u *UserAdm) SignToken(ctx context.Context, t *jwt.Token) (string, error) {

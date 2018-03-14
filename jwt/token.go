@@ -16,4 +16,5 @@ package jwt
 // Token wrapper
 type Token struct {
 	Claims Claims
+	Signed string
 }
