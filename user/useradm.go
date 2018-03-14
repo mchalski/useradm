@@ -129,6 +129,20 @@ func (u *UserAdm) Login(ctx context.Context, email, pass string) (*jwt.Token, er
 
 	//generate token
 	t, err := u.generateToken(user.ID, scope.All, ident.Tenant)
+	if err != nil {
+		return nil, err
+	}
+
+	//save token in db
+	dbToken := &model.Token{
+		Id:     t.Claims.ID,
+		Signed: t.Signed,
+	}
+
+	err = u.db.SaveToken(ctx, dbToken)
+	if err != nil {
+		return nil, err
+	}
 
 	return t, err
 }

@@ -288,6 +288,10 @@ func (db *DataStoreMongo) DeleteUser(ctx context.Context, id string) error {
 	}
 }
 
+func (db *DataStoreMongo) SaveToken(ctx context.Context, token *model.Token) error {
+	return nil
+}
+
 func (db *DataStoreMongo) MigrateTenant(ctx context.Context, version string, tenant string) error {
 	ver, err := migrate.NewVersion(version)
 	if err != nil {
