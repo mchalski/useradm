@@ -109,14 +109,8 @@ func (u *UserAdmApiHandlers) AuthLoginHandler(w rest.ResponseWriter, r *rest.Req
 		return
 	}
 
-	raw, err := u.userAdm.SignToken(ctx, token)
-	if err != nil {
-		rest_utils.RestErrWithLogInternal(w, r, l, err)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/jwt")
-	w.(http.ResponseWriter).Write([]byte(raw))
+	w.(http.ResponseWriter).Write([]byte(token.Signed))
 }
 
 func (u *UserAdmApiHandlers) AuthVerifyHandler(w rest.ResponseWriter, r *rest.Request) {
