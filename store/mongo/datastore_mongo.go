@@ -35,9 +35,10 @@ import (
 )
 
 const (
-	DbVersion   = "0.1.0"
-	DbName      = "useradm"
-	DbUsersColl = "users"
+	DbVersion    = "0.1.0"
+	DbName       = "useradm"
+	DbUsersColl  = "users"
+	DbTokensColl = "tokens"
 
 	DbUserEmail = "email"
 	DbUserPass  = "password"
@@ -289,6 +290,15 @@ func (db *DataStoreMongo) DeleteUser(ctx context.Context, id string) error {
 }
 
 func (db *DataStoreMongo) SaveToken(ctx context.Context, token *model.Token) error {
+	s := db.session.Copy()
+	defer s.Close()
+
+	c := s.DB(mstore.DbFromContext(ctx, DbName)).C(DbTokensColl)
+
+	if err := c.Insert(token); err != nil {
+		return errors.Wrap(err, "failed to store token")
+	}
+
 	return nil
 }
 

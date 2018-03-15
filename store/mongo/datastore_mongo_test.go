@@ -609,6 +609,81 @@ func TestMongoDeleteUser(t *testing.T) {
 	}
 }
 
+func TestMongoSaveToken(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode.")
+	}
+
+	exisiting := []interface{}{
+		model.Token{
+			Id:     "1",
+			Signed: "foo",
+		},
+		model.Token{
+			Id:     "2",
+			Signed: "bar",
+		},
+	}
+
+	//with tenant
+	testCases := map[string]struct {
+		token  *model.Token
+		tenant string
+	}{
+		"ok 1": {
+			token: &model.Token{
+				Id:     "3",
+				Signed: "baz",
+			},
+		},
+		"ok 2": {
+			token: &model.Token{
+				Id:     "4",
+				Signed: "asdf",
+			},
+		},
+		"ok 3, MT": {
+			token: &model.Token{
+				Id:     "5",
+				Signed: "zxcv",
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Logf("test case: %s", name)
+
+		db.Wipe()
+
+		//setup
+		ctx := context.Background()
+		if tc.tenant != "" {
+			ctx = identity.WithContext(ctx, &identity.Identity{
+				Tenant: tc.tenant,
+			})
+		}
+
+		session := db.Session()
+		store, err := NewDataStoreMongoWithSession(session)
+		assert.NoError(t, err)
+
+		err = session.DB(mstore.DbFromContext(ctx, DbName)).C(DbUsersColl).Insert(exisiting...)
+		assert.NoError(t, err)
+
+		//test
+		err = store.SaveToken(ctx, tc.token)
+		assert.NoError(t, err)
+
+		var token model.Token
+		err = session.DB(mstore.DbFromContext(ctx, DbName)).C(DbTokensColl).FindId(tc.token.Id).One(&token)
+		assert.NoError(t, err)
+
+		assert.Equal(t, *tc.token, token)
+
+		session.Close()
+	}
+}
+
 func TestMigrate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping TestMigrate in short mode.")
