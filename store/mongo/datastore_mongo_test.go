@@ -414,6 +414,92 @@ func TestMongoGetUserById(t *testing.T) {
 	}
 }
 
+func TestMongoGetTokenById(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode.")
+	}
+
+	existing := []interface{}{
+		model.Token{
+			Id:     "1",
+			Signed: "signed1",
+		},
+		model.Token{
+			Id:     "2",
+			Signed: "signed2",
+		},
+	}
+
+	testCases := map[string]struct {
+		id       string
+		tenant   string
+		outToken *model.Token
+	}{
+		"ok - found 1": {
+			id: "1",
+			outToken: &model.Token{
+				Id:     "1",
+				Signed: "signed1",
+			},
+		},
+		"ok - found 1, MT": {
+			id:     "1",
+			tenant: "foo",
+			outToken: &model.Token{
+				Id:     "1",
+				Signed: "signed1",
+			},
+		},
+		"ok - found 2": {
+			id: "2",
+			outToken: &model.Token{
+				Id:     "2",
+				Signed: "signed2",
+			},
+		},
+		"not found": {
+			id:       "3",
+			outToken: nil,
+		},
+		"not found, MT": {
+			id:       "3",
+			tenant:   "foo",
+			outToken: nil,
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Logf("test case: %s", name)
+
+		db.Wipe()
+
+		ctx := context.Background()
+		if tc.tenant != "" {
+			ctx = identity.WithContext(ctx, &identity.Identity{
+				Tenant: tc.tenant,
+			})
+		}
+
+		session := db.Session()
+		store, err := NewDataStoreMongoWithSession(session)
+		assert.NoError(t, err)
+
+		err = session.DB(mstore.DbFromContext(ctx, DbName)).C(DbTokensColl).Insert(existing...)
+		assert.NoError(t, err)
+
+		token, err := store.GetTokenById(ctx, tc.id)
+
+		if tc.outToken != nil {
+			assert.Equal(t, *tc.outToken, *token)
+		} else {
+			assert.Nil(t, token)
+			assert.Nil(t, err)
+		}
+
+		session.Close()
+	}
+}
+
 func TestMongoGetUsers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping in short mode.")

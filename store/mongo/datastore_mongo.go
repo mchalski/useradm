@@ -257,6 +257,27 @@ func (db *DataStoreMongo) GetUserById(ctx context.Context, id string) (*model.Us
 	return &user, nil
 }
 
+func (db *DataStoreMongo) GetTokenById(ctx context.Context, id string) (*model.Token, error) {
+	s := db.session.Copy()
+	defer s.Close()
+
+	var token model.Token
+
+	err := s.DB(mstore.DbFromContext(ctx, DbName)).C(DbTokensColl).
+		FindId(id).
+		One(&token)
+
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, nil
+		} else {
+			return nil, errors.Wrap(err, "failed to fetch token")
+		}
+	}
+
+	return &token, nil
+}
+
 func (db *DataStoreMongo) GetUsers(ctx context.Context) ([]model.User, error) {
 	s := db.session.Copy()
 	defer s.Close()
