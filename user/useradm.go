@@ -245,11 +245,6 @@ func (ua *UserAdm) Verify(ctx context.Context, token *jwt.Token) error {
 
 	l := log.FromContext(ctx)
 
-	if token.Claims.User != true {
-		l.Errorf("not a user token")
-		return ErrUnauthorized
-	}
-
 	if ua.verifyTenant {
 		if token.Claims.Tenant == "" {
 			l.Errorf("Token has no tenant claim")
@@ -260,8 +255,7 @@ func (ua *UserAdm) Verify(ctx context.Context, token *jwt.Token) error {
 		return jwt.ErrTokenInvalid
 	}
 
-	//check service-specific claims - iss
-	if token.Claims.Issuer != ua.config.Issuer {
+	if !verifyExp(token.Claims.ExpiresAt) {
 		return ErrUnauthorized
 	}
 
@@ -269,9 +263,21 @@ func (ua *UserAdm) Verify(ctx context.Context, token *jwt.Token) error {
 	if user == nil && err == nil {
 		return ErrUnauthorized
 	}
-
 	if err != nil {
 		return errors.Wrap(err, "useradm: failed to get user")
+	}
+
+	dbToken, err := ua.db.GetTokenById(ctx, token.Claims.ID)
+	if dbToken == nil && err == nil {
+		return ErrUnauthorized
+	}
+	if err != nil {
+		return errors.Wrap(err, "useradm: failed to get token")
+	}
+
+	//all claims not checked explicitly are checked via 1:1 comparison
+	if dbToken.Signed != token.Signed {
+		return errors.Wrapf(err, "useradm: tokens don't match, have: %v want %v", dbToken.Signed, token.Signed)
 	}
 
 	return nil
@@ -340,4 +346,9 @@ func (ua *UserAdm) SetPassword(ctx context.Context, uu model.UserUpdate) error {
 
 	err = ua.db.UpdateUser(ctx, u.ID, &uu)
 	return errors.Wrap(err, "useradm: failed to update user information")
+}
+
+func verifyExp(exp int64) bool {
+	now := time.Now().Unix()
+	return now <= exp
 }
