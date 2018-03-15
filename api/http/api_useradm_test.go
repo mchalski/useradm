@@ -64,17 +64,14 @@ func TestUserAdmApiLogin(t *testing.T) {
 		uaToken *jwt.Token
 		uaError error
 
-		signed  string
-		signErr error
-
 		checker mt.ResponseChecker
 	}{
 		"ok": {
 			//"email:pass"
 			inAuthHeader: "Basic ZW1haWw6cGFzcw==",
-			uaToken:      &jwt.Token{},
-
-			signed: "dummytoken",
+			uaToken: &jwt.Token{
+				Signed: "dummytoken",
+			},
 
 			checker: &mt.BaseResponse{
 				Status:      http.StatusOK,
@@ -85,7 +82,6 @@ func TestUserAdmApiLogin(t *testing.T) {
 		"error: unauthorized": {
 			//"email:pass"
 			inAuthHeader: "Basic ZW1haWw6cGFzcw==",
-			signed:       "initial",
 			uaError:      useradm.ErrUnauthorized,
 
 			checker: mt.NewJSONResponse(
@@ -118,16 +114,6 @@ func TestUserAdmApiLogin(t *testing.T) {
 				restError("internal error"),
 			),
 		},
-		"error: sign error": {
-			inAuthHeader: "Basic ZW1haWw6cGFzcw==",
-			uaToken:      &jwt.Token{},
-			signErr:      errors.New("sign error"),
-			checker: mt.NewJSONResponse(
-				http.StatusInternalServerError,
-				nil,
-				restError("internal error"),
-			),
-		},
 	}
 
 	for name, tc := range testCases {
@@ -141,8 +127,6 @@ func TestUserAdmApiLogin(t *testing.T) {
 			mock.AnythingOfType("string"),
 			mock.AnythingOfType("string")).
 			Return(tc.uaToken, tc.uaError)
-
-		uadm.On("SignToken", ctx, tc.uaToken).Return(tc.signed, tc.signErr)
 
 		//make mock request
 		req := makeReq("POST", "http://1.2.3.4/api/management/v1/useradm/auth/login",
