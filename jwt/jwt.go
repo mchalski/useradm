@@ -78,6 +78,7 @@ func (j *JWTHandlerRS256) FromJWT(tokstr string) (*Token, error) {
 
 	if claims, ok := jwttoken.Claims.(*Claims); ok && jwttoken.Valid {
 		token.Claims = *claims
+		token.Signed = tokstr
 		return &token, nil
 	} else {
 		return nil, ErrTokenInvalid
