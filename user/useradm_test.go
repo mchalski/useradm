@@ -88,6 +88,10 @@ func TestUserAdmLogin(t *testing.T) {
 		dbUser    *model.User
 		dbUserErr error
 
+		tokenSignErr error
+
+		saveTokErr error
+
 		outErr   error
 		outToken *jwt.Token
 
@@ -220,6 +224,38 @@ func TestUserAdmLogin(t *testing.T) {
 				ExpirationTime: 10,
 			},
 		},
+
+		"error: token sign err": {
+			inEmail:    "foo@bar.com",
+			inPassword: "correcthorsebatterystaple",
+
+			dbUser: &model.User{
+				ID:       "1234",
+				Email:    "foo@bar.com",
+				Password: `$2a$10$wMW4kC6o1fY87DokgO.lDektJO7hBXydf4B.yIWmE8hR9jOiO8way`,
+			},
+			dbUserErr: nil,
+
+			tokenSignErr: errors.New("some error"),
+
+			outErr: errors.New("some error"),
+		},
+
+		"error: token save err": {
+			inEmail:    "foo@bar.com",
+			inPassword: "correcthorsebatterystaple",
+
+			dbUser: &model.User{
+				ID:       "1234",
+				Email:    "foo@bar.com",
+				Password: `$2a$10$wMW4kC6o1fY87DokgO.lDektJO7hBXydf4B.yIWmE8hR9jOiO8way`,
+			},
+			dbUserErr: nil,
+
+			tokenSignErr: errors.New("some error"),
+
+			outErr: errors.New("some error"),
+		},
 	}
 
 	for name, tc := range testCases {
@@ -229,8 +265,14 @@ func TestUserAdmLogin(t *testing.T) {
 
 		db := &mstore.DataStore{}
 		db.On("GetUserByEmail", ContextMatcher(), tc.inEmail).Return(tc.dbUser, tc.dbUserErr)
+		db.On("SaveToken", ContextMatcher(), mock.AnythingOfType("*model.Token")).Return(tc.saveTokErr)
 
-		useradm := NewUserAdm(nil, db, nil, tc.config)
+		mockJWTHandler := &mjwt.Handler{}
+		mockJWTHandler.On("ToJWT",
+			mock.AnythingOfType("*jwt.Token"),
+		).Return("dummytoken", tc.tokenSignErr)
+
+		useradm := NewUserAdm(mockJWTHandler, db, nil, tc.config)
 		if tc.verifyTenant {
 			cTenant := &mct.ClientRunner{}
 			cTenant.On("GetTenant", ContextMatcher(), tc.inEmail, &apiclient.HttpApi{}).
